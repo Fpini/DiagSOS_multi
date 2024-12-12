@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 
-
+st.set_page_config(page_title="Home - Analisi Segnalazioni", page_icon="📄", layout="wide")
 try:
     import streamlit_random_generator
 
@@ -28,11 +28,7 @@ except ModuleNotFoundError as e:
     # remove the installing dependency warning
     dependency_warning.empty()
 
-st.set_page_config(
-    page_title="Home - Analisi Segnalazioni",
-    page_icon="📄",
-    layout="wide"
-)
+
 
 #st.title("Home - Analisi Segnalazioni SOS")
 
