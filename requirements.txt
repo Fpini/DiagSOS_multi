@@ -2,10 +2,9 @@ elementpath
 pandas
 openpyxl
 numpy
-gpt4all
 networkx
 matplotlib
 pydot
 streamlit
 reportlab
-mitosheet
+graphviz
