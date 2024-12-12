@@ -34,7 +34,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("Home - Analisi Segnalazioni SOS")
+#st.title("Home - Analisi Segnalazioni SOS")
 
 file = upload_file()
 
