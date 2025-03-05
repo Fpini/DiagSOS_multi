@@ -49,6 +49,7 @@ def process_xml_file(file):
     try:
         # Carica e analizza il file XML
         tree = ET.parse(file)
+
         root = tree.getroot()
 
         # Definisci i namespace, inclusi eventuali prefissi mancanti

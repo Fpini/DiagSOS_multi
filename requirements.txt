@@ -8,4 +8,3 @@ pydot
 streamlit
 reportlab
 graphviz
-mitosheet

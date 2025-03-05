@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import streamlit as st
 import hashlib
 import networkx as nx
@@ -12,7 +13,7 @@ from reportlab.lib import colors
 from io import BytesIO
 from reportlab.lib.utils import simpleSplit
 from reportlab.lib.colors import Color, black
-from mitosheet.streamlit.v1 import spreadsheet
+#from mitosheet.streamlit.v1 import spreadsheet
 
 
 
@@ -90,8 +91,10 @@ def visualizza_dati_segnalazione(context_data, report_data):
         st.write ("OPERAZIONI n. " + str(operazioni.shape[0]))
         if 'DATA_CONT_OPERAZ_SOS_OPERAZIONE' in operazioni.columns:
             operazioni['DATA_CONT_OPERAZ_SOS_OPERAZIONE'] = operazioni['DATA_CONT_OPERAZ_SOS_OPERAZIONE'].fillna(0).astype(int).astype(str)
+    #    if 'COMUNE_ESEC_SOS_OPERAZIONE' in operazioni.columns:
+    #        operazioni['COMUNE_ESEC_SOS_OPERAZIONE'] = operazioni['COMUNE_ESEC_SOS_OPERAZIONE'].fillna(0).astype(int).astype(str) 
         if 'COMUNE_ESEC_SOS_OPERAZIONE' in operazioni.columns:
-            operazioni['COMUNE_ESEC_SOS_OPERAZIONE'] = operazioni['COMUNE_ESEC_SOS_OPERAZIONE'].fillna(0).astype(int).astype(str) 
+           operazioni['COMUNE_ESEC_SOS_OPERAZIONE'] = operazioni['COMUNE_ESEC_SOS_OPERAZIONE'].apply(lambda x: str(int(x)) if pd.notna(x) and str(x).isdigit() else '0')
         if 'DATA_CONT_PRIMA_C_SOS_OPERAZIONE' in operazioni.columns:
             operazioni['DATA_CONT_PRIMA_C_SOS_OPERAZIONE'] = operazioni['DATA_CONT_PRIMA_C_SOS_OPERAZIONE'].fillna(0).astype(int).astype(str)
         if 'DATA_CONT_ULTIMA_C_SOS_OPERAZIONE' in operazioni.columns:
@@ -124,20 +127,28 @@ def visualizza_dati_segnalazione(context_data, report_data):
             soggetti['CODICE_ATECO_SOS_SOGGETTO'] = soggetti['CODICE_ATECO_SOS_SOGGETTO'].astype(int).astype(str) 
         if 'PF_DATANASCITA_SOS_SOGGETTO' in soggetti.columns:
             soggetti['PF_DATANASCITA_SOS_SOGGETTO'] = soggetti['PF_DATANASCITA_SOS_SOGGETTO'].astype(int).astype(str) 
+        if 'PF_DOC_DATA_SOS_SOGGETTO' in soggetti.columns:
+            soggetti['PF_DOC_DATA_SOS_SOGGETTO'] = soggetti['PF_DOC_DATA_SOS_SOGGETTO'].fillna(0).astype(int).astype(str) 
         soggetti = soggetti.dropna(axis=1, how='all')
         st.write(soggetti)
 
     # RAPPORTI
         rapporti = context_data[context_data['Context ID'].str.startswith("RAPPORTO")].dropna(axis=1, how="all")
         st.write ("RAPPORTI n. " + str(rapporti.shape[0]))
-        rapporti = rapporti.drop(columns=['Identifier', 'Period Instant'])
+        if 'Identifier' in rapporti.columns:
+            rapporti = rapporti.drop(columns=['Identifier', 'Period Instant'])
         rapporti = rapporti.fillna({
             "NUMERO_RAPPORTO_SOS_RAPPORTO": 0, 
             "DATA_ACCENSIONE_SOS_RAPPORTO": 0, 
             "FILIALE_SOS_RAPPORTO": 0 }) 
         if 'NUMERO_RAPPORTO_SOS_RAPPORTO' in rapporti.columns:
-            rapporti['NUMERO_RAPPORTO_SOS_RAPPORTO'] = rapporti['NUMERO_RAPPORTO_SOS_RAPPORTO'].astype(int).astype(str) 
+            if isinstance(rapporti['NUMERO_RAPPORTO_SOS_RAPPORTO'], (int, float)):
+                rapporti['NUMERO_RAPPORTO_SOS_RAPPORTO'] = rapporti['NUMERO_RAPPORTO_SOS_RAPPORTO'].astype(int).astype(str)
+            else: 
+                rapporti['NUMERO_RAPPORTO_SOS_RAPPORTO'] = rapporti['NUMERO_RAPPORTO_SOS_RAPPORTO'].astype(str)
+        if 'DATA_ACCENSIONE_SOS_RAPPORTO' in rapporti.columns:
             rapporti['DATA_ACCENSIONE_SOS_RAPPORTO'] = rapporti['DATA_ACCENSIONE_SOS_RAPPORTO'].astype(int).astype(str) 
+        if 'FILIALE_SOS_RAPPORTO' in rapporti.columns:
             rapporti['FILIALE_SOS_RAPPORTO'] = rapporti['FILIALE_SOS_RAPPORTO'].astype(int).astype(str) 
         rapporti = rapporti.dropna(axis=1, how='all')
         st.write(rapporti)
@@ -145,7 +156,8 @@ def visualizza_dati_segnalazione(context_data, report_data):
         # LEGAMI OPERAZIONI - RAPPORTI
         ope_rap = context_data[context_data['Context ID'].str.startswith("LEGAME_OPERAZIONE_RAPPORTO")].dropna(axis=1, how="all")
         st.write ("LEGAMI OPERAZIONI - RAPPORTI n. " + str(ope_rap.shape[0]))
-        ope_rap = ope_rap.drop(columns=['Identifier', 'Period Instant'])
+        if 'Identifier' in ope_rap.columns:
+            ope_rap = ope_rap.drop(columns=['Identifier', 'Period Instant'])
         ope_rap = ope_rap.dropna(axis=1, how='all')
         st.write(ope_rap)
 
@@ -169,7 +181,8 @@ def visualizza_dati_segnalazione(context_data, report_data):
         # LEGAMI RAPPORTI - SOGGETTI
         rap_sogg = context_data[context_data['Context ID'].str.startswith("LEGAME_RAPPORTO_SOGGETTO")].dropna(axis=1, how="all")
         st.write ("LEGAMI RAPPORTI - SOGGETTI n. " + str(rap_sogg.shape[0]))
-        rap_sogg = rap_sogg.drop(columns=['Identifier', 'Period Instant'])
+        if 'Identifier' in rap_sogg.columns:
+            rap_sogg = rap_sogg.drop(columns=['Identifier', 'Period Instant'])
         rap_sogg = rap_sogg.dropna(axis=1, how='all')
         st.write(rap_sogg)
 
@@ -180,17 +193,21 @@ def visualizza_grafo(context_data, report_data):
         cripta_dati = st.sidebar.checkbox("Visualizza dati criptati")
         soggetti = context_data[context_data['Context ID'].str.startswith("SOGGETTO")]
         oper_sogg = context_data[context_data['Context ID'].str.startswith("LEGAME_OPERAZIONE__SOGGETTO")]
-        operazioni = context_data[context_data['Context ID'].str.startswith("OPERAZIONE")]
+        operazioni = context_data[context_data['Context ID'].str.startswith("OPERAZIONE")].copy()
         segnalazione = context_data[context_data['Context ID'].str.startswith("SEGNALAZIONE")]
 
-        operazioni['BIN'] = pd.qcut(operazioni['IMPORTO_OPERAZ_SOS_OPERAZIONE'], q=5, labels=["1", "2", "3", "4", "5"])
+#        operazioni.loc[:, 'BIN'] = pd.qcut(operazioni['IMPORTO_OPERAZ_SOS_OPERAZIONE'], q=5, labels=["1", "2", "3", "4", "5"])
+        operazioni.loc[:, 'BIN'] = pd.cut(operazioni['IMPORTO_OPERAZ_SOS_OPERAZIONE'], bins=5, labels=["1", "2", "3", "4", "5"])
+
+        #operazioni['BIN'] = pd.qcut(operazioni['IMPORTO_OPERAZ_SOS_OPERAZIONE'], q=5, labels=["1", "2", "3", "4", "5"])
         G = crea_grafo(soggetti, oper_sogg, operazioni, cripta_dati)
 
         #st.subheader("Visualizzazione del Grafo")
         fig, ax = plt.subplots(figsize=(12, 8))
         pos = nx.nx_pydot.pydot_layout(G, prog="sfdp")
         nx.draw_networkx_nodes(G, pos, node_size=700, node_color="lightblue", ax=ax)
-        spessori = [G[u][v].get('peso', 1) for u, v in G.edges()]
+        #spessori = [G[u][v].get('peso', 1) for u, v in G.edges()]
+        spessori = [int(G[u][v].get('peso', 1)) for u, v in G.edges()]
         nx.draw_networkx_edges(G, pos, edgelist=G.edges(), edge_color="gray", width=spessori, ax=ax)
         nx.draw_networkx_labels(G, pos, font_size=10, font_weight="bold", ax=ax)
         plt.axis("off")
@@ -348,38 +365,82 @@ def nominativo(row):
     else:
         return row['PF_NOME_SOS_SOGGETTO'] + ' ' + row['PF_COGNOME_SOS_SOGGETTO']
 
+# 
 def crea_grafo(soggetti, oper_sogg, operazioni, cripta_dati):
+    # Creazione di un grafo diretto
     G = nx.DiGraph()
-    for _, row in soggetti.iterrows():
-        nome = nominativo(row)
-        if cripta_dati:
-            nome = cripta(nome)
-        nome = nome[:10]
+
+    # Aggiunta dei nodi al grafo con criptazione opzionale
+    soggetti['NOME_TRONCATO'] = soggetti.apply(
+        lambda row: cripta(nominativo(row))[:10] if cripta_dati else nominativo(row)[:10], axis=1
+    )
+
+    for nome in soggetti['NOME_TRONCATO']:
         G.add_node(nome)
-        oper_sogg_ord = oper_sogg[
-            (oper_sogg['PROG_SOGGETTO'] == row['PROG_SOGGETTO']) &
-            (oper_sogg['TIPO_LEGAME_OPER_SOGG'].isin([1, 2, 3]))
+
+    # Filtraggio delle operazioni valide per i nodi ordinanti (TIPO_LEGAME 1, 2, 3)
+    oper_sogg_ord = oper_sogg[oper_sogg['TIPO_LEGAME_OPER_SOGG'].isin([1, 2, 3])]
+
+    # Unione delle informazioni tra soggetti e oper_sogg_ord
+    oper_sogg_ord = oper_sogg_ord.merge(soggetti[['PROG_SOGGETTO', 'NOME_TRONCATO']],
+                                        left_on='PROG_SOGGETTO', right_on='PROG_SOGGETTO', how='left')
+
+    # Iterazione sulle operazioni ordinate
+    for _, row_ord in oper_sogg_ord.iterrows():
+        nome = row_ord['NOME_TRONCATO']
+        prog_oper = row_ord['PROG_OPERAZIONE']
+
+        # Filtraggio dei beneficiari (TIPO_LEGAME 4)
+        oper_sogg_ben = oper_sogg[
+            (oper_sogg['PROG_OPERAZIONE'] == prog_oper) &
+            (oper_sogg['TIPO_LEGAME_OPER_SOGG'] == 4)
         ]
-        for _, row in oper_sogg_ord.iterrows():
-            prog_oper = row['PROG_OPERAZIONE']
-            oper_sogg_ben = oper_sogg[
-                (oper_sogg['PROG_OPERAZIONE'] == prog_oper) &
-                (oper_sogg['TIPO_LEGAME_OPER_SOGG'].isin([4]))
-            ]
-            if oper_sogg_ben.empty:
-                G.add_edge(nome, nome, peso=1)
-            else:
-                for _, row in oper_sogg_ben.iterrows():
-                    prog_sog = row['PROG_SOGGETTO']
-                    beneficiario = soggetti[soggetti['PROG_SOGGETTO'] == prog_sog]
-                    if not beneficiario.empty:
-                        dest = nominativo(beneficiario.iloc[0])
-                        if cripta_dati:
-                            dest = cripta(dest)
-                        dest = dest[:10]
-                        importo = operazioni[operazioni['PROG_OPERAZIONE'] == prog_oper]['BIN']
-                        G.add_edge(nome, dest, peso=int(importo))
+
+        if oper_sogg_ben.empty:
+            # Se non ci sono beneficiari, crea un loop al nodo stesso
+            G.add_edge(nome, nome, peso=1)
+        else:
+            # Unione delle informazioni dei beneficiari
+            oper_sogg_ben = oper_sogg_ben.merge(soggetti[['PROG_SOGGETTO', 'NOME_TRONCATO']],
+                                                left_on='PROG_SOGGETTO', right_on='PROG_SOGGETTO', how='left')
+
+            # Unione con la colonna BIN delle operazioni
+            oper_sogg_ben = oper_sogg_ben.merge(
+                operazioni[['PROG_OPERAZIONE', 'BIN']],
+                left_on='PROG_OPERAZIONE', right_on='PROG_OPERAZIONE',
+                how='left'
+            )
+
+            # Aggiunta degli archi al grafo
+            for _, row_ben in oper_sogg_ben.iterrows():
+                dest = row_ben['NOME_TRONCATO']
+                try:
+                    peso = int(row_ben['BIN'])  # Conversione a intero del peso
+                except (ValueError, TypeError):
+                    peso = 1  # Default in caso di errore
+
+                G.add_edge(nome, dest, peso=peso)
+
     return G
+
+def dati_mancanti(df):
+    # (Definizione della funzione dati_segnalazione)
+    segnalazione_df = df[df['Context ID'].str.startswith("SEGNALAZIONE")]
+ # Radice da cercare
+    radice = 'FD_ASK'
+
+    # Trovare le celle che iniziano con la radice
+    risultati = []
+    for index, row in df.iterrows():
+        for col in df.columns:
+            if isinstance(row[col], str) and row[col].startswith(radice):
+                risultati.append({'Riga': row['Context ID'], 'Dato mancante': col})
+
+    # Creare il nuovo DataFrame
+    df_risultati = pd.DataFrame(risultati)
+
+    # Visualizzare il risultato
+    st.write(df_risultati)
 
 lst_campi_segn = [
     'IDSOS_ANNO', 'IDSOS_PROG', 'IDSOS_MOD_INOLTRO', 
@@ -495,7 +556,7 @@ def esegui_test_03(df):
             '26', '48', '10', 'AA', 'AM', 'AE', 'R081', 'R082'
         ]))
     ]
-    print('df1_OPE: ', df1_OPE.shape)
+    #print('df1_OPE: ', df1_OPE.shape)
     # Test non eseguibile per assenza di operazioni in ambito
     if df1_OPE.empty:
         esito_out = None
@@ -515,7 +576,7 @@ def esegui_test_03(df):
                 esiti_test.append(False)
                 esiti_cod_sogg.append(cod_ope)
                 esito_out = False
-                print(f"Errore operazione {cod_ope}: assenza legame tra operazione e soggetto controparte")
+                #print(f"Errore operazione {cod_ope}: assenza legame tra operazione e soggetto controparte")
             else:
                 # Verifica presenza legame tra operazione e soggetto che ha eseguito l'operazione in proprio
                 df2_OPE_SOGG = df[
@@ -537,7 +598,7 @@ def esegui_test_03(df):
                         esiti_test.append(False)
                         esiti_cod_sogg.append(cod_ope)
                         esito_out = False
-                        print("Errore: assenza legame tra operazione e soggetto esecutore")
+                        #print("Errore: assenza legame tra operazione e soggetto esecutore")
                     else:
                         # Test OK per operazione cod_ope per presenza legame tra operazione e soggetto esecutore per conto terzi
                         esiti_test.append(True)
@@ -578,13 +639,13 @@ def esegui_test_04(df):
                 (df['PROG_OPERAZIONE'] == cod_ope) & 
                 (df['TIPO_LEGAME_OPER_RAPP_SOS_LEGAME_OPER_RAPP'].isin([1, 2]))]        
             if df2_OPE_RAPP.shape[0] < 2:
-                print("df2_OPE_RAPP ", df2_OPE_RAPP.shape[0])
+                #print("df2_OPE_RAPP ", df2_OPE_RAPP.shape[0])
                 esito_out = False
                 esiti_test.append(False)
                 esiti_cod_ent.append(row['PROG_OPERAZIONE'])  
             else:
                 for _, row in df2_OPE_RAPP.iterrows():
-                    print(row)
+                    #print(row)
                     prog_rapp = int(row['PROG_RAPPORTO'])
                     leg_ope_rapp = row['TIPO_LEGAME_OPER_RAPP_SOS_LEGAME_OPER_RAPP']
                     df3_RAPP = df[
